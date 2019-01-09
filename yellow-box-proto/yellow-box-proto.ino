@@ -46,8 +46,8 @@ void displayBoil() {
 void displayError(uint8_t error) {
   lc.clearDisplay(0);
   lc.setChar(0, 3, 'e', false);
-  lc.setChar(0, 2, 'R', false);
-  lc.setChar(0, 1, 'R', false);
+  lc.setRow(0 , 2, B00000101); // r
+  lc.setRow(0 , 1, B00000101); // r
   if (error & MAX31865_FAULT_HIGHTHRESH) {
     lc.setChar(0, 0, 0, false);
   }
@@ -102,7 +102,7 @@ void loop() {
   } else if (temp >= 100.0) {
     displayBoil();
   } else {
-    displayTemperature(temp);  
+    displayTemperature(temp);
   }
   
   Serial.print("Temperature = "); Serial.println(temp);
