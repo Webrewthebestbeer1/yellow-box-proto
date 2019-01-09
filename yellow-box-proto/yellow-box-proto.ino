@@ -19,7 +19,7 @@ Adafruit_MAX31865 max = Adafruit_MAX31865(7, 8, 9, 10);
  pin 10 is connected to LOAD 
  We have only a single MAX72XX.
  */
-LedControl lc = LedControl(12, 11, 10, 1);
+LedControl lc = LedControl(13, 12, 11, 1);
 
 static int pinA = 2; // Our first hardware interrupt pin is digital pin 2
 static int pinB = 3; // Our second hardware interrupt pin is digital pin 3
@@ -47,11 +47,9 @@ void setup() {
   attachInterrupt(0, PinA, RISING); // set an interrupt on PinA, looking for a rising edge signal and executing the "PinA" Interrupt Service Routine (below)
   attachInterrupt(1, PinB, RISING); // set an interrupt on PinB, looking for a rising edge signal and executing the "PinB" Interrupt Service Routine (below)
   Serial.begin(9600); // start the serial monitor link
-  Serial.begin(115200);
 }
 
 void displayBoil() {
-  lc.clearDisplay(0);
   lc.setChar(0, 3, 'b', false);
   lc.setChar(0, 2, 'o', false);
   lc.setRow(0 , 1, B00010000); // i
@@ -59,10 +57,15 @@ void displayBoil() {
 }
 
 void displayError(uint8_t error) {
-  lc.clearDisplay(0);
+  /*
   lc.setChar(0, 3, 'e', false);
   lc.setRow(0 , 2, B00000101); // r
   lc.setRow(0 , 1, B00000101); // r
+  */
+  for (int i = 3; i > 3 - 4; i--) {
+    lc.setRow(0, i, B00000000);
+  }
+  lc.setChar(0, 1, 'E', false);
   if (error & MAX31865_FAULT_HIGHTHRESH) {
     lc.setChar(0, 0, 0, false);
   }
@@ -84,8 +87,7 @@ void displayError(uint8_t error) {
   
 }
 
-void displayTemperature(float temp) {
-  lc.clearDisplay(0);
+void displayTemperature(float temp, uint8_t displayStartPos) {
   double fractpart, intpart;
   fractpart = modf(temp, &intpart);
   int integer = (int) intpart;
@@ -93,16 +95,16 @@ void displayTemperature(float temp) {
   if (integer > 9) {
     int tens = integer / 10 % 10;
     int units = integer % 10;
-    lc.setChar(0, 3, tens, false);
-    lc.setChar(0, 2, units, true);
+    lc.setChar(0, displayStartPos, tens, false);
+    lc.setChar(0, displayStartPos - 1, units, true);
   } else {
-    lc.setChar(0, 2, integer, true);
+    lc.setChar(0, displayStartPos - 1, integer, true);
   }
   int decimalTens = decimals / 10 % 10;
   // int decimalUnits = decimals % 10;
-  lc.setChar(0, 1, decimalTens, false);
+  lc.setChar(0, displayStartPos - 2, decimalTens, false);
   // lc.setChar(0, 0, decimalUnits, false);
-  lc.setChar(0, 0, 'c', false);
+  lc.setChar(0, displayStartPos - 3, 'c', false);
 }
 
 void PinA() {
@@ -140,8 +142,9 @@ void readAndDisplayTemperature() {
   } else if (temp >= 100.0) {
     displayBoil();
   } else {
-    displayTemperature(encoderPos / 10.0);  
+    displayTemperature(temp, 3);  
   }
+  Serial.print("Temp: "); Serial.println(temp);
 }
 
 void loop() {
@@ -152,6 +155,8 @@ void loop() {
     Serial.println(encoderPos / 10.0);
     oldEncPos = encoderPos;
   }
+
+  displayTemperature(encoderPos / 10.0, 7);
 
   if (millis() > time_now + 1000) {
     time_now = millis();
