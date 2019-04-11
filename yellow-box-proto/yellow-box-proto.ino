@@ -17,12 +17,10 @@ static int heatTransistorPin = A2;
 static int pumpTransistorPin = A3;
 static int rotaryEncoderPinA = 2;
 static int rotaryEncoderPinB = 3;
-volatile byte rotaryEncoderFlagA = 0; // let's us know when we're expecting a rising edge on pinA to signal that the encoder has arrived at a detent
-volatile byte rotaryEncoderFlagB = 0; // let's us know when we're expecting a rising edge on pinB to signal that the encoder has arrived at a detent (opposite direction to when aFlag is set)
-int encoderPos = 200; //this variable stores our current value of encoder position. Change to int or uin16_t instead of byte if you want to record a larger range than 0-255
-int oldEncPos = 200; //stores the last encoder position value so we can compare to the current reading and see if it has changed (so we know when to print to the serial monitor)
-//volatile byte reading = 0;
-unsigned long encoderLastChangeTime = 0;
+static int rotaryEncoderState;
+static int rotaryEncoderLastState;
+static float rotaryEncoderSpeed = 0.1;
+unsigned long rotaryEncoderLastChangeTime = 0;
 
 const uint8_t SEG_BOIL[] = {
   SEG_F | SEG_E | SEG_D | SEG_C | SEG_G,            // b
@@ -76,10 +74,9 @@ void setup() {
   pinMode(mainSwitchPin, INPUT);
   pinMode(heatTransistorPin, OUTPUT);
   pinMode(pumpTransistorPin, OUTPUT);
-  pinMode(rotaryEncoderPinA, INPUT_PULLUP); // set pinA as an input, pulled HIGH to the logic voltage (5V or 3.3V for most cases)
-  pinMode(rotaryEncoderPinB, INPUT_PULLUP); // set pinB as an input, pulled HIGH to the logic voltage (5V or 3.3V for most cases)
-  attachInterrupt(0, rotaryEncoderInterruptA, RISING); // set an interrupt on PinA, looking for a rising edge signal and executing the "PinA" Interrupt Service Routine (below)
-  attachInterrupt(1, rotaryEncoderInterruptB, RISING);
+  pinMode(rotaryEncoderPinA, INPUT);
+  pinMode(rotaryEncoderPinB, INPUT);
+  rotaryEncoderLastState = digitalRead(rotaryEncoderPinA);
   Serial.begin(9600);
 }
 
@@ -108,55 +105,24 @@ void readAndDisplayTemperature() {
 }
 
 void readRotaryEncoder() {
-  if (oldEncPos != encoderPos) {
-    if (encoderPos < 0) {
-      encoderPos = 0;
-    }
-    if (encoderPos > 1000.0) {
-      encoderPos = 1000.0;
-    }
-    Serial.println(encoderPos / 10.0);
-    displayTemperature(displayTarget, encoderPos / 10.0);
-    rotaryEncoderReading = encoderPos / 10.0;
-    oldEncPos = encoderPos;
-  }
-}
-
-void rotaryEncoderInterruptA() {
-  //Serial.print("interrupt A");
-  cli(); //stop interrupts happening before we read pin values
-  volatile byte reading = PIND & 0xC; // read all eight pin values then strip away all but pinA and pinB's values
-  if (reading == B00001100 && rotaryEncoderFlagA) { //check that we have both pins at detent (HIGH) and that we are expecting detent on this pin's rising edge
-    if (millis() - encoderLastChangeTime < 20) {
-      encoderPos = encoderPos - 10;
-    } else {
-      encoderPos -= 10; //decrement the encoder's position count  
-    }
-    encoderLastChangeTime = millis();
-    
-    rotaryEncoderFlagA = 0; //reset flags for the next turn
-    rotaryEncoderFlagB = 0; //reset flags for the next turn
-  }
-  else if (reading == B00000100) rotaryEncoderFlagB = 1; //signal that we're expecting pinB to signal the transition to detent from free rotation
-  sei(); //restart interrupts
-}
-
-void rotaryEncoderInterruptB() {
-  //Serial.print("interrupt B");
-  cli(); //stop interrupts happening before we read pin values
-  volatile byte reading = PIND & 0xC; //read all eight pin values then strip away all but pinA and pinB's values
-  if (reading == B00001100 && rotaryEncoderFlagB) { //check that we have both pins at detent (HIGH) and that we are expecting detent on this pin's rising edge
-    if (millis() - encoderLastChangeTime < 20) {
-      encoderPos = encoderPos + 10;
-    } else {
-      encoderPos += 10; //decrement the encoder's position count  
-    }
-    encoderLastChangeTime = millis();
-    rotaryEncoderFlagA = 0; //reset flags for the next turn
-    rotaryEncoderFlagB = 0; //reset flags for the next turn
-  }
-  else if (reading == B00001000) rotaryEncoderFlagA = 1; //signal that we're expecting pinA to signal the transition to detent from free rotation
-  sei(); //restart interrupts
+  rotaryEncoderState = digitalRead(rotaryEncoderPinA); // Reads the "current" state of the outputA
+   // If the previous and the current state of the outputA are different, that means a Pulse has occured
+  if (rotaryEncoderState != rotaryEncoderLastState){     
+   // If the outputB state is different to the outputA state, that means the encoder is rotating clockwise
+   if ((millis() - rotaryEncoderLastChangeTime) < 200) {
+    rotaryEncoderSpeed += 0.1;
+   } else {
+    rotaryEncoderSpeed = 0.1;
+   }
+   if (digitalRead(rotaryEncoderPinB) != rotaryEncoderState) { 
+     rotaryEncoderReading += rotaryEncoderSpeed;
+   } else {
+     rotaryEncoderReading -= rotaryEncoderSpeed;
+   }
+   displayTemperature(displayTarget, rotaryEncoderReading);
+   rotaryEncoderLastChangeTime = millis();
+ } 
+ rotaryEncoderLastState = rotaryEncoderState; // Updates the previous state of the outputA with the current state
 }
 
 void readSwitches() {
