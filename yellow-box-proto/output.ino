@@ -1,34 +1,34 @@
 void printSwitches() {
   Serial.print("MainSwitch ");
-  Serial.println(MainSwitch ? "on" : "off");
-  Serial.print("HeatSwitch ");
-  Serial.println(HeatSwitch ? "on" : "off");
-  Serial.print("PumpSwitch ");
-  Serial.println(PumpSwitch ? "on" : "off");
-  Serial.print("ModeSwitch ");
-  Serial.println(ModeSwitch ? "on" : "off");
+  Serial.print(MainSwitch ? "on" : "off");
+  Serial.print(" | HeatSwitch ");
+  Serial.print(HeatSwitch ? "on" : "off");
+  Serial.print(" | PumpSwitch ");
+  Serial.print(PumpSwitch ? "on" : "off");
+  Serial.print(" | ModeSwitch ");
+  Serial.print(ModeSwitch ? "on" : "off");
   Serial.println();
 }
 
 void printRotaryEncoder() {
   Serial.print("RotaryEncoderState ");
-  Serial.println(RotaryEncoderState);
-  Serial.print("RotaryEncoderLastState ");
-  Serial.println(RotaryEncoderLastState);
-  Serial.print("RotaryEncoderReading ");
-  Serial.println(RotaryEncoderReading);
-  Serial.print("RotaryEncoderSpeed ");
-  Serial.println(RotaryEncoderSpeed);
-  Serial.print("RotaryEncoderLastChangeTime ");
-  Serial.println(RotaryEncoderLastChangeTime);
+  Serial.print(RotaryEncoderState);
+  Serial.print(" | RotaryEncoderLastState ");
+  Serial.print(RotaryEncoderLastState);
+  Serial.print(" | RotaryEncoderReading ");
+  Serial.print(RotaryEncoderReading);
+  Serial.print(" | RotaryEncoderSpeed ");
+  Serial.print(RotaryEncoderSpeed);
+  Serial.print(" | RotaryEncoderLastChangeTime ");
+  Serial.print(RotaryEncoderLastChangeTime);
   Serial.println();
 }
 
 void printTemperature() {
   Serial.print("TemperatureReading ");
-  Serial.println(RotaryEncoderState);
-  Serial.print("TemperatureError ");
-  Serial.println(TemperatureError);
+  Serial.print(RotaryEncoderState);
+  Serial.print(" | TemperatureError ");
+  Serial.print(TemperatureError);
   Serial.println();
 }
 
