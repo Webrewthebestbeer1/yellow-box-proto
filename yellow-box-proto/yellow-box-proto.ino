@@ -15,7 +15,10 @@ unsigned long RotaryEncoderLastChangeTime = 0;
 
 float TemperatureReading = 0.0;
 uint8_t TemperatureError;
-unsigned long TimeNow = 0;
+boolean TemperatureRising = true;
+
+unsigned long ClockStart = 0;
+unsigned long CycleStart = 0;
 
 // LCD Pins
 #define CLK_TEMP 13
@@ -39,7 +42,12 @@ const int PUMP_TRANSISTOR_PIN = A3;
 const int ROTARY_ENCODER_PIN_A = 2;
 const int ROTARY_ENCODER_PIN_B = 3;
 
-const int DUTY_CYCLE = 1000;
+const int DUTY_CLOCK = 500;
+const int DUTY_CYCLE = 3000;
+const float HEATER_ACTIVE = 0.7;
+
+const float TEMP_RISING_OFFSET = 3.0;
+const float TEMP_SINKING_OFFSET = 6.0;
 
 const uint8_t SEG_BOIL[] = {
   SEG_F | SEG_E | SEG_D | SEG_C | SEG_G,            // b
