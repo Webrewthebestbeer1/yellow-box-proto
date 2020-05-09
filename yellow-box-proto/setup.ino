@@ -1,7 +1,7 @@
 void setup() {
   max.begin(MAX31865_2WIRE);
-  DisplayTemp.setBrightness(0x0f);
-  DisplayTarget.setBrightness(0x0f);
+  displayTemp.setBrightness(0x0f);
+  displayTarget.setBrightness(0x0f);
   pinMode(MAIN_SWITCH_PIN, INPUT);
   pinMode(HEAT_SWITCH_PIN, INPUT);
   pinMode(PUMP_SWITCH_PIN, INPUT);

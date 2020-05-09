@@ -70,8 +70,8 @@ const uint8_t SEG_OFF[] = {
 // 100.0 for PT100, 1000.0 for PT1000
 #define RNOMINAL  100.0
 
-TM1637Display DisplayTemp(CLK_TEMP, DIO_TEMP);
-TM1637Display DisplayTarget(CLK_TARGET, DIO_TARGET);
+TM1637Display displayTemp(CLK_TEMP, DIO_TEMP);
+TM1637Display displayTarget(CLK_TARGET, DIO_TARGET);
 
 Adafruit_MAX31865 max = 
   Adafruit_MAX31865(

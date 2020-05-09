@@ -10,8 +10,8 @@ void loop() {
       printSwitches();
       printRotaryEncoder();
       printTemperature();
-      displayTemperature(DisplayTarget, RotaryEncoderReading);
-      displayTemperature(DisplayTemp, TemperatureReading, TemperatureError);
+      displayTemperature(displayTarget, RotaryEncoderReading);
+      displayTemperature(displayTemp, TemperatureReading, TemperatureError);
 
       if (ModeSwitch) {
         // TODO: Add smart temperature adjustment here
@@ -25,8 +25,8 @@ void loop() {
       }
 
     } else {
-      DisplayTarget.setSegments(SEG_OFF);
-      DisplayTemp.setSegments(SEG_OFF);
+      displayTarget.setSegments(SEG_OFF);
+      displayTemp.setSegments(SEG_OFF);
     }
   }
 }
