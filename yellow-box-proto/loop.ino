@@ -1,7 +1,7 @@
 void displayTemperature(TM1637Display display, float temp, boolean error=false);
 
 void loop() {
-  if (dutyCycle) {
+  if (dutyCycle()) {
     readSwitches();
     readRotaryEncoder();
     readTemperature();
