@@ -1,20 +1,8 @@
 void readSwitches() {
-  boolean newMainSwitch = !digitalRead(MAIN_SWITCH_PIN);
-  if (newMainSwitch != MainSwitch) {
-    MainSwitch = newMainSwitch;
-  }
-  boolean newModeSwitch = !digitalRead(MODE_SWITCH_PIN);
-  if (newModeSwitch != ModeSwitch) {
-    ModeSwitch = newModeSwitch;
-  }
-  boolean newHeatSwitch = !digitalRead(HEAT_SWITCH_PIN);
-  if (newHeatSwitch != HeatSwitch) {
-    HeatSwitch = newHeatSwitch;
-  }
-  boolean newPumpSwitch = !digitalRead(PUMP_SWITCH_PIN);
-  if (newPumpSwitch != PumpSwitch) {
-    PumpSwitch = newPumpSwitch;
-  }
+  MainSwitch = !digitalRead(MAIN_SWITCH_PIN);
+  ModeSwitch = !digitalRead(MODE_SWITCH_PIN);
+  HeatSwitch = !digitalRead(HEAT_SWITCH_PIN);
+  PumpSwitch = !digitalRead(PUMP_SWITCH_PIN);
 }
 
 void readRotaryEncoder() {
