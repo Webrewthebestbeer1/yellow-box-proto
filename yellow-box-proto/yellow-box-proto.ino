@@ -1,9 +1,53 @@
-#include "TM1637.h"
-#include <Adafruit_MAX31865.h>
-#include <math.h>
+#include <TM1637Display.h>
 
-// Adafruit_MAX31865 max = Adafruit_MAX31865(45);
-Adafruit_MAX31865 max = Adafruit_MAX31865(7, 8, 9, 10);
+// LCD Pins
+#define CLK_TEMP 13
+#define DIO_TEMP 12
+#define CLK_TARGET 11
+#define DIO_TARGET 10
+#define TERMOMETER_CS 6
+#define TERMOMETER_SDI 7
+#define TERMOMETER_SDO 8
+#define TERMOMETER_CLK 9
+static int mainSwitchPin = 4;
+static int modeSwitchPin = 5;
+static int heatSwitchPin = A0;
+static int pumpSwitchPin = A1;
+static int heatTransistorPin = A2;
+static int pumpTransistorPin = A3;
+static int rotaryEncoderPinA = 2;
+static int rotaryEncoderPinB = 3;
+static int rotaryEncoderState;
+static int rotaryEncoderLastState;
+static float rotaryEncoderSpeed = 0.1;
+unsigned long rotaryEncoderLastChangeTime = 0;
+
+const uint8_t SEG_BOIL[] = {
+  SEG_F | SEG_E | SEG_D | SEG_C | SEG_G,            // b
+  SEG_C | SEG_D | SEG_E | SEG_G,                    // o
+  SEG_E,                                            // i
+  SEG_D | SEG_E                                     // l
+};
+const uint8_t SEG_ERROR[] = {
+  SEG_A | SEG_D | SEG_F | SEG_E | SEG_G,            // E
+  SEG_E | SEG_G,                                    // r
+  SEG_E | SEG_G,                                    // r
+  SEG_C | SEG_D | SEG_E | SEG_G                     // o
+};
+const uint8_t SEG_CELCIUS[] = {
+  SEG_E | SEG_F | SEG_A | SEG_D                     // C
+};
+const uint8_t SEG_OFF[] = {
+  SEG_A | SEG_B | SEG_C | SEG_D | SEG_E | SEG_F,    // O
+  SEG_A | SEG_E | SEG_F | SEG_G,                    // F
+  SEG_A | SEG_E | SEG_F | SEG_G                     // F
+};
+TM1637Display displayTemp(CLK_TEMP, DIO_TEMP);
+TM1637Display displayTarget(CLK_TARGET, DIO_TARGET);
+
+
+#include <Adafruit_MAX31865.h>
+Adafruit_MAX31865 max = Adafruit_MAX31865(TERMOMETER_CS, TERMOMETER_SDI, TERMOMETER_SDO, TERMOMETER_CLK);
 
 // The value of the Rref resistor. Use 430.0 for PT100 and 4300.0 for PT1000
 #define RREF      430.0
@@ -11,120 +55,42 @@ Adafruit_MAX31865 max = Adafruit_MAX31865(7, 8, 9, 10);
 // 100.0 for PT100, 1000.0 for PT1000
 #define RNOMINAL  100.0
 
-TM1637 lc(12, 11);
+boolean mainSwitch = false;
+boolean heatSwitch = false;
+boolean pumpSwitch = false;
+boolean modeSwitch = false;
+float temperatureReading = 0.0;
+float rotaryEncoderReading = 0.0;
 
-static int pinA = 2; // Our first hardware interrupt pin is digital pin 2
-static int pinB = 3; // Our second hardware interrupt pin is digital pin 3
-volatile byte aFlag = 0; // let's us know when we're expecting a rising edge on pinA to signal that the encoder has arrived at a detent
-volatile byte bFlag = 0; // let's us know when we're expecting a rising edge on pinB to signal that the encoder has arrived at a detent (opposite direction to when aFlag is set)
-int encoderPos = 200; //this variable stores our current value of encoder position. Change to int or uin16_t instead of byte if you want to record a larger range than 0-255
-int oldEncPos = 200; //stores the last encoder position value so we can compare to the current reading and see if it has changed (so we know when to print to the serial monitor)
-volatile byte reading = 0; //somewhere to store the direct values we read from our interrupt pins before checking to see if we have moved a whole detent
 unsigned long time_now = 0;
-unsigned long encoderLastChangeTime = 0;
 
 void setup() {
-  max.begin(MAX31865_2WIRE);  // set to 2WIRE or 4WIRE as necessary
-  lc.init();
-  lc.set(BRIGHT_TYPICAL);//BRIGHT_TYPICAL = 2,BRIGHT_DARKEST = 0,BRIGHTEST = 7;
-  
-  pinMode(pinA, INPUT_PULLUP); // set pinA as an input, pulled HIGH to the logic voltage (5V or 3.3V for most cases)
-  pinMode(pinB, INPUT_PULLUP); // set pinB as an input, pulled HIGH to the logic voltage (5V or 3.3V for most cases)
-  attachInterrupt(0, PinA, RISING); // set an interrupt on PinA, looking for a rising edge signal and executing the "PinA" Interrupt Service Routine (below)
-  attachInterrupt(1, PinB, RISING); // set an interrupt on PinB, looking for a rising edge signal and executing the "PinB" Interrupt Service Routine (below)
-  Serial.begin(9600); // start the serial monitor link
+  max.begin(MAX31865_2WIRE);
+  displayTemp.setBrightness(0x0f);
+  displayTarget.setBrightness(0x0f);
+  pinMode(mainSwitchPin, INPUT);
+  pinMode(heatSwitchPin, INPUT);
+  pinMode(pumpSwitchPin, INPUT);
+  pinMode(mainSwitchPin, INPUT);
+  pinMode(heatTransistorPin, OUTPUT);
+  pinMode(pumpTransistorPin, OUTPUT);
+  pinMode(rotaryEncoderPinA, INPUT);
+  pinMode(rotaryEncoderPinB, INPUT);
+  rotaryEncoderLastState = digitalRead(rotaryEncoderPinA);
+  Serial.begin(9600);
 }
 
-void displayBoil() {
-  lc.display(3, 'b');
-  lc.display(2, 'o');
-  lc.display(1, B00010000); // i
-  lc.display(0, B00001100); // l
-}
-/*
-void displayError(uint8_t error) {
-  for (int i = 3; i > 3 - 4; i--) {
-    lc.setRow(0, i, B00000000);
-  }
-  lc.setChar(0, 3, 'E', false);
-  lc.setChar(0, 2, 1, false);
-  lc.setChar(0, 1, 0, false);
-  if (error & MAX31865_FAULT_HIGHTHRESH) {
-    lc.setChar(0, 0, 1, false);
-  }
-  if (error & MAX31865_FAULT_LOWTHRESH) {
-    lc.setChar(0, 0, 2, false);
-  }
-  if (error & MAX31865_FAULT_REFINLOW) {
-    lc.setChar(0, 0, 3, false);
-  }
-  if (error & MAX31865_FAULT_REFINHIGH) {
-    lc.setChar(0, 0, 4, false);
-  }
-  if (error & MAX31865_FAULT_RTDINLOW) {
-    lc.setChar(0, 0, 5, false);
-  }
-  if (error & MAX31865_FAULT_OVUV) {
-    lc.setChar(0, 0, 6, false);
-  }
-  
-}
-*/
 
-void displayTemperature(float temp) {
-  double fractpart, intpart;
-  fractpart = modf(temp, &intpart);
-  int integer = (int) intpart;
-  int decimals = (int) ((fractpart * 100) + 0.5);
-  if (integer > 9) {
-    int tens = integer / 10 % 10;
-    int units = integer % 10;
-    lc.display(0, tens);
-    lc.display(1, units);
+void displayTemperature(TM1637Display display, float temp, boolean error=false) {
+  if (error || temp < 0) {
+    display.setSegments(SEG_ERROR);
+  }
+  else if (temp >= 100) {
+    display.setSegments(SEG_BOIL); 
   } else {
-    lc.display(1, integer); // TODO: dot
-    lc.showNumberDecEx(0, (0x80 >> 2), true);
+    display.showNumberDecEx(round(temp*10), 0b01000000, false, 3, 0);
+    display.setSegments(SEG_CELCIUS, 1, 3); 
   }
-  int decimalTens = decimals / 10 % 10;
-  // int decimalUnits = decimals % 10;
-  lc.display(2, decimalTens);
-  // lc.setChar(0, 0, decimalUnits, false);
-  lc.display(3, 12);
-}
-
-void PinA() {
-  cli(); //stop interrupts happening before we read pin values
-  reading = PIND & 0xC; // read all eight pin values then strip away all but pinA and pinB's values
-  if (reading == B00001100 && aFlag) { //check that we have both pins at detent (HIGH) and that we are expecting detent on this pin's rising edge
-    if (millis() - encoderLastChangeTime < 20) {
-      encoderPos = encoderPos - 10;
-    } else {
-      encoderPos --; //decrement the encoder's position count  
-    }
-    encoderLastChangeTime = millis();
-    
-    bFlag = 0; //reset flags for the next turn
-    aFlag = 0; //reset flags for the next turn
-  }
-  else if (reading == B00000100) bFlag = 1; //signal that we're expecting pinB to signal the transition to detent from free rotation
-  sei(); //restart interrupts
-}
-
-void PinB() {
-  cli(); //stop interrupts happening before we read pin values
-  reading = PIND & 0xC; //read all eight pin values then strip away all but pinA and pinB's values
-  if (reading == B00001100 && bFlag) { //check that we have both pins at detent (HIGH) and that we are expecting detent on this pin's rising edge
-    if (millis() - encoderLastChangeTime < 20) {
-      encoderPos = encoderPos + 10;
-    } else {
-      encoderPos ++; //decrement the encoder's position count  
-    }
-    encoderLastChangeTime = millis();
-    bFlag = 0; //reset flags for the next turn
-    aFlag = 0; //reset flags for the next turn
-  }
-  else if (reading == B00001000) aFlag = 1; //signal that we're expecting pinA to signal the transition to detent from free rotation
-  sei(); //restart interrupts
 }
 
 void readAndDisplayTemperature() {
@@ -133,37 +99,76 @@ void readAndDisplayTemperature() {
   ratio /= 32768;
   float temp = max.temperature(RNOMINAL, RREF);
   uint8_t error = max.readFault();
-  if (error) {
-    // displayError(error);
-  } else if (temp >= 100.0) {
-    displayBoil();
-  } else {
-    displayTemperature(temp);  
-  }
+  temperatureReading = temp;
+  displayTemperature(displayTemp, temp, error); 
   Serial.print("Temp: "); Serial.println(temp);
 }
 
+void readRotaryEncoder() {
+  rotaryEncoderState = digitalRead(rotaryEncoderPinA); // Reads the "current" state of the outputA
+   // If the previous and the current state of the outputA are different, that means a Pulse has occured
+  if (rotaryEncoderState != rotaryEncoderLastState){     
+   // If the outputB state is different to the outputA state, that means the encoder is rotating clockwise
+   if ((millis() - rotaryEncoderLastChangeTime) < 200) {
+    rotaryEncoderSpeed += 0.1;
+   } else {
+    rotaryEncoderSpeed = 0.1;
+   }
+   if (digitalRead(rotaryEncoderPinB) != rotaryEncoderState) { 
+     rotaryEncoderReading += rotaryEncoderSpeed;
+   } else {
+     rotaryEncoderReading -= rotaryEncoderSpeed;
+   }
+   displayTemperature(displayTarget, rotaryEncoderReading);
+   rotaryEncoderLastChangeTime = millis();
+ } 
+ rotaryEncoderLastState = rotaryEncoderState; // Updates the previous state of the outputA with the current state
+}
+
+void readSwitches() {
+  boolean newMainSwitch = !digitalRead(mainSwitchPin);
+  if (newMainSwitch != mainSwitch) {
+    mainSwitch = newMainSwitch;
+    Serial.print("mainSwitch ");
+    Serial.println(mainSwitch ? "on" : "off");
+  }
+  boolean newModeSwitch = !digitalRead(modeSwitchPin);
+  if (newModeSwitch != modeSwitch) {
+    modeSwitch = newModeSwitch;
+    Serial.print("modeSwitch ");
+    Serial.println(modeSwitch ? "on" : "off");
+  }
+  boolean newHeatSwitch = !digitalRead(heatSwitchPin);
+  if (newHeatSwitch != heatSwitch) {
+    heatSwitch = newHeatSwitch;
+    Serial.print("heatSwitch ");
+    Serial.println(heatSwitch ? "on" : "off");
+  }
+  boolean newPumpSwitch = !digitalRead(pumpSwitchPin);
+  if (newPumpSwitch != pumpSwitch) {
+    pumpSwitch = newPumpSwitch;
+    Serial.print("pumpSwitch ");
+    Serial.println(pumpSwitch ? "on" : "off");
+  }
+}
+
 void loop() {
-  if (oldEncPos != encoderPos) {
-    if (encoderPos < 0) {
-      encoderPos = 0;
+  readSwitches();
+  if (mainSwitch) {
+    readRotaryEncoder();
+    if (millis() > time_now + 1000) {
+      time_now = millis();
+      readAndDisplayTemperature();
     }
-    if (encoderPos > 1000.0) {
-      encoderPos = 1000.0;
+    if (modeSwitch) {
+      digitalWrite(heatTransistorPin, (temperatureReading < rotaryEncoderReading) ? HIGH : LOW);
+      digitalWrite(pumpTransistorPin, HIGH);
+    } else{
+      digitalWrite(heatTransistorPin, heatSwitch ? HIGH : LOW);
+      digitalWrite(pumpTransistorPin, pumpSwitch ? HIGH : LOW);
     }
-    Serial.println(encoderPos / 10.0);
-    oldEncPos = encoderPos;
-  }
-  /*
-  if (encoderPos >= 1000.0) {
-    displayBoil();
   } else {
-    displayTemperature(encoderPos / 10.0);
-  }
-  */
-  
-  if (millis() > time_now + 1000) {
-    time_now = millis();
-    readAndDisplayTemperature();
+    displayTemp.setSegments(SEG_OFF); 
+    displayTarget.setSegments(SEG_OFF); 
   }
 }
