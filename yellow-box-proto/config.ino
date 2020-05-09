@@ -1,6 +1,3 @@
-#include <TM1637Display.h>
-#include <Adafruit_MAX31865.h>
-
 // LCD Pins
 #define CLK_TEMP 13
 #define DIO_TEMP 12
@@ -50,25 +47,4 @@ const uint8_t SEG_OFF[] = {
 // The 'nominal' 0-degrees-C resistance of the sensor
 // 100.0 for PT100, 1000.0 for PT1000
 #define RNOMINAL  100.0
-
-TM1637Display displayTemp(CLK_TEMP, DIO_TEMP);
-TM1637Display displayTarget(CLK_TARGET, DIO_TARGET);
-
-Adafruit_MAX31865 max = 
-Adafruit_MAX31865(TERMOMETER_CS, TERMOMETER_SDI, TERMOMETER_SDO, TERMOMETER_CLK);
-
-boolean MainSwitch = false;
-boolean HeatSwitch = false;
-boolean PumpSwitch = false;
-boolean ModeSwitch = false;
-
-int RotaryEncoderState;
-int RotaryEncoderLastState;
-float RotaryEncoderReading = 0.0;
-float RotaryEncoderSpeed = 0.1;
-unsigned long RotaryEncoderLastChangeTime = 0;
-
-float TemperatureReading = 0.0;
-uint8_t TemperatureError;
-unsigned long TimeNow = 0;
 
