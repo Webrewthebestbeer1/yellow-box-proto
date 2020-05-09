@@ -1,6 +1,22 @@
 #include <TM1637Display.h>
 #include <Adafruit_MAX31865.h>
 
+// Global vars
+boolean MainSwitch = false;
+boolean HeatSwitch = false;
+boolean PumpSwitch = false;
+boolean ModeSwitch = false;
+
+int RotaryEncoderState;
+int RotaryEncoderLastState;
+float RotaryEncoderReading = 0.0;
+float RotaryEncoderSpeed = 0.1;
+unsigned long RotaryEncoderLastChangeTime = 0;
+
+float TemperatureReading = 0.0;
+uint8_t TemperatureError;
+unsigned long TimeNow = 0;
+
 // LCD Pins
 #define CLK_TEMP 13
 #define DIO_TEMP 12
@@ -11,6 +27,7 @@
 #define TERMOMETER_SDO 8
 #define TERMOMETER_CLK 9
 
+// Constants
 const int MAIN_SWITCH_PIN = 4;
 const int MODE_SWITCH_PIN = 5;
 const int HEAT_SWITCH_PIN = A0;
@@ -45,30 +62,18 @@ const uint8_t SEG_OFF[] = {
   SEG_A | SEG_E | SEG_F | SEG_G                     // F
 };
 
+// Imported functionality
+//
 // The value of the Rref resistor. Use 430.0 for PT100 and 4300.0 for PT1000
 #define RREF      430.0
 // The 'nominal' 0-degrees-C resistance of the sensor
 // 100.0 for PT100, 1000.0 for PT1000
 #define RNOMINAL  100.0
 
-TM1637Display displayTemp(CLK_TEMP, DIO_TEMP);
-TM1637Display displayTarget(CLK_TARGET, DIO_TARGET);
+TM1637Display DisplayTemp(CLK_TEMP, DIO_TEMP);
+TM1637Display DisplayTarget(CLK_TARGET, DIO_TARGET);
 
 Adafruit_MAX31865 max = 
-Adafruit_MAX31865(TERMOMETER_CS, TERMOMETER_SDI, TERMOMETER_SDO, TERMOMETER_CLK);
-
-boolean MainSwitch = false;
-boolean HeatSwitch = false;
-boolean PumpSwitch = false;
-boolean ModeSwitch = false;
-
-int RotaryEncoderState;
-int RotaryEncoderLastState;
-float RotaryEncoderReading = 0.0;
-float RotaryEncoderSpeed = 0.1;
-unsigned long RotaryEncoderLastChangeTime = 0;
-
-float TemperatureReading = 0.0;
-uint8_t TemperatureError;
-unsigned long TimeNow = 0;
+  Adafruit_MAX31865(
+    TERMOMETER_CS, TERMOMETER_SDI, TERMOMETER_SDO, TERMOMETER_CLK);
 
