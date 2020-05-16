@@ -60,7 +60,7 @@ boolean heatSwitch = false;
 boolean pumpSwitch = false;
 boolean modeSwitch = false;
 float temperatureReading = 0.0;
-float rotaryEncoderReading = 0.0;
+float rotaryEncoderReading = 50.0;
 
 unsigned long time_now = 0;
 
