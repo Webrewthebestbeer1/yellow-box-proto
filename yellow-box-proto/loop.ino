@@ -10,6 +10,7 @@ void loop() {
       printSwitches();
       printRotaryEncoder();
       printTemperature();
+      printHeatDebug();
       displayTemperature(displayTarget, RotaryEncoderReading);
       displayTemperature(displayTemp, TemperatureReading, TemperatureError);
 
@@ -38,4 +39,3 @@ boolean isNextIteration() {
   }
   return result;
 }
-
