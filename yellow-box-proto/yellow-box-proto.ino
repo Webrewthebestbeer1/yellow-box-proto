@@ -9,7 +9,7 @@ boolean ModeSwitch = false;
 
 int RotaryEncoderState;
 int RotaryEncoderLastState;
-float RotaryEncoderReading = 0.0;
+float RotaryEncoderReading = 50.0;
 float RotaryEncoderSpeed = 0.1;
 unsigned long RotaryEncoderLastChangeTime = 0;
 
