@@ -1,7 +1,7 @@
 void displayTemperature(TM1637Display display, float temp, boolean error=false);
 
 void loop() {
-  if (dutyCycle()) {
+  if (isNextIteration()) {
     readSwitches();
     readRotaryEncoder();
     readTemperature();
@@ -10,13 +10,13 @@ void loop() {
       printSwitches();
       printRotaryEncoder();
       printTemperature();
+      printHeatDebug();
       displayTemperature(displayTarget, RotaryEncoderReading);
       displayTemperature(displayTemp, TemperatureReading, TemperatureError);
 
       if (ModeSwitch) {
         // TODO: Add smart temperature adjustment here
-        digitalWrite(HEAT_TRANSISTOR_PIN, 
-          (TemperatureReading < RotaryEncoderReading) ? HIGH : LOW);
+        controlHeater();
         digitalWrite(PUMP_TRANSISTOR_PIN, HIGH);
 
       } else {
@@ -31,10 +31,11 @@ void loop() {
   }
 }
 
-boolean dutyCycle() {
+boolean isNextIteration() {
   boolean result = false;
-  if (millis() > TimeNow + DUTY_CYCLE) {
-      result = true;
+  if (millis() >= ClockStart + DUTY_CLOCK) {
+    result = true;
+    ClockStart = millis();
   }
   return result;
 }

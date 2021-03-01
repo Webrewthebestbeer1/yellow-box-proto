@@ -9,13 +9,16 @@ boolean ModeSwitch = false;
 
 int RotaryEncoderState;
 int RotaryEncoderLastState;
-float RotaryEncoderReading = 50.0;
-float RotaryEncoderSpeed = 0.1;
+float RotaryEncoderReading = 101.0;
+float RotaryEncoderSpeed = 1.0;
 unsigned long RotaryEncoderLastChangeTime = 0;
 
 float TemperatureReading = 0.0;
 uint8_t TemperatureError;
-unsigned long TimeNow = 0;
+boolean TemperatureRising = true;
+
+unsigned long ClockStart = 0;
+unsigned long CycleStart = 0;
 
 // LCD Pins
 #define CLK_TEMP 13
@@ -39,7 +42,13 @@ const int PUMP_TRANSISTOR_PIN = A3;
 const int ROTARY_ENCODER_PIN_A = 2;
 const int ROTARY_ENCODER_PIN_B = 3;
 
-const int DUTY_CYCLE = 1000;
+const int DUTY_CLOCK = 500;
+const int DUTY_CYCLE = 3000;
+const float HEATER_ACTIVE = 0.3;
+
+const float TEMP_ERROR = 4.0;
+const float TEMP_RISING_OFFSET = 0.0;
+const float TEMP_SINKING_OFFSET = 0.0;
 
 const uint8_t SEG_BOIL[] = {
   SEG_F | SEG_E | SEG_D | SEG_C | SEG_G,            // b
@@ -76,4 +85,3 @@ TM1637Display displayTarget(CLK_TARGET, DIO_TARGET);
 Adafruit_MAX31865 max = 
   Adafruit_MAX31865(
     TERMOMETER_CS, TERMOMETER_SDI, TERMOMETER_SDO, TERMOMETER_CLK);
-
